@@ -26,9 +26,6 @@ jobs:
       - name: Install dependencies
         run: pip install pytrends
 
-      - name: Collect Reddit metrics
-        run: python collect_reddit.py
-
       - name: Collect Google Trends metrics
         run: python collect_trends.py
 
