@@ -12,7 +12,15 @@ import urllib.request
 import json
 
 DATA_DIR = "data"
-HEADERS = {"User-Agent": "whitespace-tracker/0.1"}
+# A realistic browser User-Agent avoids Reddit's automatic bot-blocking,
+# which otherwise 403s obviously bot-like User-Agent strings.
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept": "application/json",
+}
 
 
 def slug(text):
@@ -24,11 +32,20 @@ def read_watchlist():
         return [l.strip() for l in f if l.strip() and not l.startswith("#")]
 
 
-def search_reddit(keyword, days=7):
-    url = f"https://www.reddit.com/search.json?q={urllib.parse.quote(keyword)}&sort=new&limit=100&t=month"
-    req = urllib.request.Request(url, headers=HEADERS)
-    with urllib.request.urlopen(req, timeout=15) as resp:
-        payload = json.loads(resp.read())
+def search_reddit(keyword, days=7, attempts=3):
+    url = f"https://old.reddit.com/search.json?q={urllib.parse.quote(keyword)}&sort=new&limit=100&t=month"
+    last_err = None
+    for attempt in range(attempts):
+        try:
+            req = urllib.request.Request(url, headers=HEADERS)
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                payload = json.loads(resp.read())
+            break
+        except Exception as e:
+            last_err = e
+            time.sleep(5 * (attempt + 1))  # back off: 5s, 10s, 15s
+    else:
+        raise last_err
 
     cutoff = time.time() - days * 86400
     posts, comments, score = 0, 0, 0
