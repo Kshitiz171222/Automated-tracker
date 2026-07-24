@@ -1,0 +1,7 @@
+# Add one category / sub-segment per line. That's it.
+# To add a new one: click this file on GitHub, click the pencil (Edit),
+# add a line, click "Commit changes". The tool picks it up on the next run.
+#
+# Example:
+# plant-based protein bars
+# waterless shampoo
