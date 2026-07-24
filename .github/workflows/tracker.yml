@@ -1,0 +1,59 @@
+name: Weekly whitespace category tracker
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"     # every Monday, 6am UTC (~11:30am IST)
+  push:
+    paths:
+      - "watchlist.txt"      # also runs the moment you add a new category
+  workflow_dispatch: {}      # manual "Run workflow" button in the Actions tab
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  track:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install pytrends
+
+      - name: Collect Reddit metrics
+        run: python collect_reddit.py
+
+      - name: Collect Google Trends metrics
+        run: python collect_trends.py
+
+      - name: Build dashboard
+        run: python build_dashboard.py
+
+      - name: Commit updated data + dashboard
+        run: |
+          git config user.name "whitespace-tracker-bot"
+          git config user.email "actions@github.com"
+          git add data/ docs/
+          git diff --quiet --cached || git commit -m "Weekly data update"
+          git push
+
+      - name: Deploy dashboard to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    needs: track
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
