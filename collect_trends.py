@@ -23,6 +23,20 @@ def read_watchlist():
         return [l.strip() for l in f if l.strip() and not l.startswith("#")]
 
 
+def fetch_trend(pytrends, kw, attempts=4):
+    last_err = None
+    for attempt in range(attempts):
+        try:
+            pytrends.build_payload([kw], timeframe="today 3-m", geo=GEO)
+            return pytrends.interest_over_time()
+        except Exception as e:
+            last_err = e
+            wait = 20 * (attempt + 1)  # back off: 20s, 40s, 60s, 80s
+            print(f"'{kw}' attempt {attempt + 1} failed ({e}); waiting {wait}s")
+            time.sleep(wait)
+    raise last_err
+
+
 def main():
     os.makedirs(DATA_DIR, exist_ok=True)
     today = datetime.date.today().isoformat()
@@ -30,8 +44,7 @@ def main():
 
     for kw in read_watchlist():
         try:
-            pytrends.build_payload([kw], timeframe="today 3-m", geo=GEO)
-            df = pytrends.interest_over_time()
+            df = fetch_trend(pytrends, kw)
             if df.empty:
                 print(f"No trend data for '{kw}'")
                 continue
