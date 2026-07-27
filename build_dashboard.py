@@ -72,11 +72,13 @@ h1 {{ font-size: 22px; }}
 table {{ border-collapse: collapse; width: 100%; margin-top: 10px; font-size: 14px; }}
 th, td {{ border-bottom: 1px solid #eee; padding: 6px 8px; text-align: left; }}
 .flag {{ background: #ffedd5; color: #9a3412; font-size: 12px; padding: 3px 8px; border-radius: 4px; margin-left: 8px; }}
+.btn {{ background: #16a34a; color: #fff; padding: 6px 14px; border-radius: 6px; text-decoration: none; font-size: 14px; }}
 .empty {{ color: #888; }}
 </style></head>
 <body>
 <h1>Whitespace category tracker</h1>
-<p>Updates automatically every week. Add a new category by editing <code>watchlist.txt</code> in the repo.</p>
+<p>Updates automatically every week. Add a new category by editing <code>watchlist.txt</code> in the repo.
+&nbsp; <a href="dashboard.xlsx" class="btn">Download Excel</a></p>
 {''.join(cards) if cards else '<p class="empty">No data yet - runs weekly, or trigger manually from the Actions tab.</p>'}
 </body></html>"""
 
