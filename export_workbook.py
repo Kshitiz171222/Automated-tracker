@@ -2,8 +2,7 @@
 Builds docs/dashboard.xlsx - one Excel workbook with a separate sheet per
 category (each category is independent - no cross-category combining).
 Each sheet has: search index history, a trailing average, rolling growth %,
-and an embedded dark-themed line chart, formatted like the original
-Babycare-style analysis sheet.
+and an embedded line chart of the search index over time.
 """
 import csv
 import glob
@@ -12,9 +11,6 @@ import re
 
 import openpyxl
 from openpyxl.chart import LineChart, Reference
-from openpyxl.drawing.text import CharacterProperties, ParagraphProperties
-from openpyxl.chart.shapes import GraphicalProperties
-from openpyxl.drawing.fill import ColorChoice
 from openpyxl.styles import Font
 
 DATA_DIR = "data"
@@ -33,15 +29,13 @@ def load_csv(path):
 
 
 def safe_sheet_name(name):
-    # Excel sheet names: max 31 chars, no : \ / ? * [ ]
     cleaned = re.sub(r"[:\\/?*\[\]]", "", name)
     return cleaned[:31] or "Sheet"
 
 
 def build_sheet(wb, label, rows):
     ws = wb.create_sheet(safe_sheet_name(label))
-    headers = ["Date", "Search Index", "Trailing Average", "Rolling Growth %"]
-    ws.append(headers)
+    ws.append(["Date", "Search Index", "Trailing Average", "Rolling Growth %"])
     for cell in ws[1]:
         cell.font = Font(bold=True)
 
@@ -50,42 +44,36 @@ def build_sheet(wb, label, rows):
 
     for i, r in enumerate(rows):
         row_idx = i + 2
-        idx_val = float(r["search_index"]) if r.get("search_index") else ""
-        ws.append([r["date"], idx_val, "", ""])
+        idx_val = float(r["search_index"]) if r.get("search_index") else None
+        ws.append([r["date"], idx_val, None, None])
 
         if trailing and i >= trailing - 1:
             start = row_idx - trailing + 1
             ws[f"C{row_idx}"] = f"=AVERAGE(B{start}:B{row_idx})"
         if trailing and i >= trailing:
             prev_row = row_idx - trailing
-            ws[f"D{row_idx}"] = (
-                f"=IF(C{prev_row}=0,\"\",(C{row_idx}-C{prev_row})/C{prev_row})"
-            )
+            ws[f"D{row_idx}"] = f"=IF(C{prev_row}=0,\"\",(C{row_idx}-C{prev_row})/C{prev_row})"
             ws[f"D{row_idx}"].number_format = "0.0%"
 
     for col in ws.columns:
         ws.column_dimensions[col[0].column_letter].width = 18
 
-    if trailing and n > trailing:
+    # --- chart: Search Index over time. One series, dates on the x-axis. ---
+    if n >= 2:
         chart = LineChart()
-        chart.style = 26  # built-in dark chart style
+        chart.title = f"{label.title()} - Search Index Over Time"
+        chart.style = 26
         chart.height = 9
         chart.width = 20
+        chart.y_axis.title = "Search Index"
+        chart.x_axis.title = "Date"
 
-        data_ref = Reference(ws, min_col=4, min_row=1, max_row=1 + n)
-        cats_ref = Reference(ws, min_col=1, min_row=2, max_row=1 + n)
+        data_ref = Reference(ws, min_col=2, min_row=1, max_row=n + 1)  # incl. header
+        cats_ref = Reference(ws, min_col=1, min_row=2, max_row=n + 1)  # dates only
         chart.add_data(data_ref, titles_from_data=True)
         chart.set_categories(cats_ref)
 
-        chart.title = f"{label.upper()} SEARCH GROWTH TREND"
-        title_para = chart.title.tx.rich.p[0]
-        title_para.pPr = ParagraphProperties(
-            defRPr=CharacterProperties(sz=1500, b=True, cap="all",
-                                        solidFill=ColorChoice(srgbClr="FFFFFF"))
-        )
-        chart.graphical_properties = GraphicalProperties(solidFill="1F1F1F")
-
-        ws.add_chart(chart, f"F2")
+        ws.add_chart(chart, "F2")
 
 
 def main():
@@ -96,7 +84,7 @@ def main():
         return
 
     wb = openpyxl.Workbook()
-    wb.remove(wb.active)  # drop the default blank sheet
+    wb.remove(wb.active)
 
     for path in files:
         rows = load_csv(path)
